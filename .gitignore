@@ -1,0 +1,4 @@
+dist/
+__pycache__/
+.DS_Store
+packs/mypack_gradient/
