@@ -108,15 +108,10 @@ def animate(rel: str, along, match=is_diamond) -> None:
     write_anim(rel, frames, BOW_FRAMETIME)
 
 
-def item_along(x, y):
-    # Items are drawn bottom-left (handle/grip) to top-right (tip), so x - y runs along them.
-    return min(max((x - y + 15) / 30, 0.0), 1.0)
-
-
 def block_along(x, y):
-    # Diagonal bands that repeat every 16 px in both x and y (flow() is a cosine with period 2 in g),
+    # Diagonal bands that repeat every 16 px in both x and y (flow() is a cosine with period 1 in g),
     # so placed blocks tile with no seams, and the bands slide diagonally as the colors flow.
-    return 2 * (x - y) / 16
+    return (x - y) / 16
 
 
 ENTITY_ANIM_FRAMES = 32  # one frame per tick over the bow's 32-tick loop, so it's smooth without
@@ -222,6 +217,7 @@ def fireball() -> None:
     every = [(x, y) for fr in frames for y in range(16) for x in range(16) if fr.getpixel((x, y))[3]]
     ls = sorted({lum(fr.getpixel(c)) for fr in frames for c in every if fr.getpixel(c)[3]})
     lo, hi = ls[0], ls[-1]
+    a0, a1 = min(x - y for x, y in every), max(x - y for x, y in every)  # fireball's own extent
     steps = 2 * BOW_PULSE_FRAMES  # 16 frames x 2 ticks = 32 ticks, same loop as the bow
     out = []
     for k in range(steps):
@@ -233,7 +229,7 @@ def fireball() -> None:
                 p = fpx[x, y]
                 if p[3]:
                     shade = (lum(p) - lo) / (hi - lo)
-                    fpx[x, y] = (*gradient_color(item_along(x, y), shade, k / steps), p[3])
+                    fpx[x, y] = (*gradient_color((x - y - a0) / (a1 - a0), shade, k / steps), p[3])
         out.append(fr)
     w = Image.new("RGBA", (16, 16 * steps))
     for i, fr in enumerate(out):

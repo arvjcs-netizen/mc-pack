@@ -135,10 +135,10 @@ def crit_particle() -> None:
 
 def flow(g: float, t: float) -> float:
     """Where a pixel sits between violet (0) and cyan (1) at animation time t (0..1, loops).
-    g is its position along the item (0 at the violet end, 1 at the cyan end). At t = 0 this is
-    the plain gradient; as t advances the colors slide along the item, and every frame still
-    spans the whole violet -> cyan range from one end to the other."""
-    return 0.5 - 0.5 * math.cos(2 * math.pi * (g / 2 + t))
+    g is its position along the item (0 at one end, 1 at the other). One full violet -> cyan ->
+    violet cycle is stretched over the item, so EVERY frame shows the same amount of each color
+    (never a near-solid frame); as t advances the bands just slide along the item."""
+    return 0.5 - 0.5 * math.cos(2 * math.pi * (g + t))
 
 
 def gradient_pulse(rel: str, skip=lambda x, y: False) -> None:
