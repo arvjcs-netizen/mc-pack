@@ -10,8 +10,8 @@ get the author's permission (or replace them) before sharing or uploading this p
 | `items/wood_sword.png`, `stone_sword.png`, `iron_sword.png`, `gold_sword.png`, `diamond_sword.png` | Revelation 16x | Skeptal (funded by NoSDaemon) |
 | `gui/icons.png` — heart rows (normal + hardcore) | Azurite 32x, recolored blue → diamond teal (`tools/recolor.py`) | Based on Faithful 32x — see license note below |
 | `blocks/bed_*_top.png`, `bed_*_side.png`, `items/bed.png` | Resolute 16x, red blanket recolored to rainbow (`tools/recolor.py`) | Skeptal |
-| `items/bow_standby.png`, `bow_pulling_0-2.png` + `.mcmeta` | Resolute 16x, wood recolored to an animated violet-to-cyan gradient pulse (`tools/recolor.py`) | Skeptal |
-| `items/fishing_rod_uncast.png`, `fishing_rod_cast.png` + `.mcmeta` | Resolute 16x, wood recolored to an animated violet-to-cyan gradient pulse (`tools/recolor.py`) | Skeptal |
+| `items/bow_standby.png`, `bow_pulling_0-2.png` + `.mcmeta` | Resolute 16x, wood recolored to an animated violet-to-cyan color-flow gradient (`tools/recolor.py`) | Skeptal |
+| `items/fishing_rod_uncast.png`, `fishing_rod_cast.png` + `.mcmeta` | Resolute 16x, wood recolored to an animated violet-to-cyan color-flow gradient (`tools/recolor.py`) | Skeptal |
 | `particle/particles.png` | Resolute 16x, upscaled 2x, except the crit sprite (cell 65), which is an original blue ring drawn by `tools/recolor.py` (shape inspired by Dewier 140k, no pixels copied) | Skeptal |
 | `gui/widgets.png` — buttons, language + lock buttons (everything below the hotbar) | Dewier 140k | Author not listed. Hotbar part is still Resolute's. |
 | `gui/options_background.png`, `gui/resource_packs.png` | Dewier 140k | Author not listed in the pack |

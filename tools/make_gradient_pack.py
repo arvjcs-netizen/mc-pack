@@ -1,5 +1,5 @@
 """Build "MyPack Gradient": a complete, standalone version of MyPack where every diamond texture
-and the fireball use the same animated violet -> cyan gradient pulse as the bow and fishing rod.
+and the fireball use the same animated violet -> cyan color-flow gradient as the bow and fishing rod.
 
     python tools/make_gradient_pack.py      then press F3+T in-game
 
@@ -28,7 +28,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from recolor import (BOW_FRAMETIME, BOW_PULSE_FRAMES, GRAD_RAMP_END, GRAD_RAMP_START,  # noqa: E402
-                     PULSE_DARK, lum, ramp_color)
+                     flow, lum, ramp_color)
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "pack"
@@ -56,15 +56,18 @@ def is_gold(p) -> bool:
     return p[3] > 0 and 0.03 <= h <= 0.18 and s > 0.15 and v > 0.5
 
 
-def gradient_color(g: float, shade: float, bright: float = 1.0):
-    """g: 0 = violet end, 1 = cyan end. shade: 0 = darkest, 1 = lightest. bright: pulse level."""
-    ramp = [tuple((s + (e - s) * g) * bright for s, e in zip(sc, ec))
+def gradient_color(g: float, shade: float, t: float = 0.0):
+    """g: position, 0 = violet end, 1 = cyan end. shade: 0 = darkest, 1 = lightest.
+    t: animation time 0..1 (colors flow along the item; brightness never changes)."""
+    c = flow(g, t)
+    ramp = [tuple(s + (e - s) * c for s, e in zip(sc, ec))
             for sc, ec in zip(GRAD_RAMP_START, GRAD_RAMP_END)]
     return ramp_color(ramp, shade)
 
 
 def pulse(f: int) -> float:
-    return 1 - (1 - PULSE_DARK) * (1 - math.cos(2 * math.pi * f / BOW_PULSE_FRAMES)) / 2
+    """Animation time (0..1) of item frame f."""
+    return f / BOW_PULSE_FRAMES
 
 
 def shade_map(img, pixels):
@@ -111,8 +114,9 @@ def item_along(x, y):
 
 
 def block_along(x, y):
-    # Diagonal bands that repeat every 16 px in both x and y, so placed blocks tile with no seams.
-    return 0.5 - 0.5 * math.cos(2 * math.pi * (x - y) / 16)
+    # Diagonal bands that repeat every 16 px in both x and y (flow() is a cosine with period 2 in g),
+    # so placed blocks tile with no seams, and the bands slide diagonally as the colors flow.
+    return 2 * (x - y) / 16
 
 
 ENTITY_ANIM_FRAMES = 32  # one frame per tick over the bow's 32-tick loop, so it's smooth without
@@ -129,18 +133,18 @@ def entity_anim(rel: str, along) -> None:
     shades = shade_map(base, pixels)
     g = {c: along(*c, base.width, base.height) for c in pixels}
 
-    def frame(bright):
+    def frame(t):
         fr = base.copy()
         fpx = fr.load()
         for c in pixels:
-            fpx[c] = (*gradient_color(g[c], shades[c], bright), px[c][3])
+            fpx[c] = (*gradient_color(g[c], shades[c], t), px[c][3])
         return fr
 
-    frame(1.0).save(TEX / rel)
+    frame(0.0).save(TEX / rel)
     n = ENTITY_ANIM_FRAMES
     strip = Image.new("RGBA", (base.width, base.height * n))
     for k in range(n):
-        strip.paste(frame(1 - (1 - PULSE_DARK) * (1 - math.cos(2 * math.pi * k / n)) / 2), (0, base.height * k))
+        strip.paste(frame(k / n), (0, base.height * k))
     name = Path(rel).stem
     ANIM.mkdir(parents=True, exist_ok=True)
     strip.save(ANIM / f"{name}.png")
@@ -167,13 +171,13 @@ def hearts() -> None:
         cx, cy = (x - 16) % HEART_CELL, y % 45 if y >= 45 else y
         return (cx - cy + HEART_CELL - 1) / (2 * (HEART_CELL - 1))
 
-    def frame(bright, img):
+    def frame(t, img):
         ipx = img.load()
         for c in pixels:
-            ipx[c] = (*gradient_color(g(*c), shades[c], bright), px[c][3])
+            ipx[c] = (*gradient_color(g(*c), shades[c], t), px[c][3])
         return img
 
-    frame(1.0, base.copy()).save(TEX / rel)
+    frame(0.0, base.copy()).save(TEX / rel)
     ANIM.mkdir(parents=True, exist_ok=True)
     n = ENTITY_ANIM_FRAMES
     for y0 in HEART_ROWS:
@@ -181,8 +185,7 @@ def hearts() -> None:
         x0, x1 = min(xs), max(xs) + 1
         strip = Image.new("RGBA", (x1 - x0, HEART_CELL * n))
         for k in range(n):
-            bright = 1 - (1 - PULSE_DARK) * (1 - math.cos(2 * math.pi * k / n)) / 2
-            fr = frame(bright, base.copy()).crop((x0, y0, x1, y0 + HEART_CELL))
+            fr = frame(k / n, base.copy()).crop((x0, y0, x1, y0 + HEART_CELL))
             strip.paste(fr, (0, HEART_CELL * k))
         name = f"hearts_{y0}"
         strip.save(ANIM / f"{name}.png")
@@ -223,7 +226,6 @@ def fireball() -> None:
     out = []
     for k in range(steps):
         src = frames[k % n]
-        bright = 1 - (1 - PULSE_DARK) * (1 - math.cos(2 * math.pi * k / steps)) / 2
         fr = src.copy()
         fpx = fr.load()
         for y in range(16):
@@ -231,7 +233,7 @@ def fireball() -> None:
                 p = fpx[x, y]
                 if p[3]:
                     shade = (lum(p) - lo) / (hi - lo)
-                    fpx[x, y] = (*gradient_color(item_along(x, y), shade, bright), p[3])
+                    fpx[x, y] = (*gradient_color(item_along(x, y), shade, k / steps), p[3])
         out.append(fr)
     w = Image.new("RGBA", (16, 16 * steps))
     for i, fr in enumerate(out):

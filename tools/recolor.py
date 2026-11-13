@@ -42,12 +42,11 @@ CRIT_CELL = 65  # particles.png sprite index used by crits and fully-charged arr
 PARTICLE_SCALE = 2  # particles.png is upscaled (nearest) 128 -> 256 so the ring gets 16x16 pixels
 
 # Bow + fishing rod wood: a strong gradient along the item, from violet at the bottom-left end
-# (bow's lower tip / rod handle) to bright cyan at the top-right end, and the whole thing pulses
-# bright -> dark -> bright. Each ramp is darkest -> lightest wood shade.
+# (bow's lower tip / rod handle) to bright cyan at the top-right end. The animation keeps the
+# brightness fixed and makes the colors flow along the item (see flow()). Ramps: darkest -> lightest.
 GRAD_RAMP_START = [(52, 8, 104), (112, 28, 200), (168, 76, 252), (218, 150, 255)]
 GRAD_RAMP_END = [(8, 84, 160), (16, 168, 232), (70, 226, 255), (186, 252, 255)]
-PULSE_DARK = 0.6       # at its darkest the pulse dims the wood to this fraction
-BOW_PULSE_FRAMES = 8   # frames in one bright -> dark -> bright loop
+BOW_PULSE_FRAMES = 8   # frames in one full color-flow loop
 BOW_FRAMETIME = 4      # ticks per frame (20 ticks = 1s), so one loop = 8 * 4 = 32 ticks = 1.6s
 BOW_FRAMES = ["bow_standby", "bow_pulling_0", "bow_pulling_1", "bow_pulling_2"]
 ROD_FRAMES = ["fishing_rod_uncast", "fishing_rod_cast"]
@@ -134,8 +133,16 @@ def crit_particle() -> None:
     img.save(TEX / "particle/particles.png")
 
 
+def flow(g: float, t: float) -> float:
+    """Where a pixel sits between violet (0) and cyan (1) at animation time t (0..1, loops).
+    g is its position along the item (0 at the violet end, 1 at the cyan end). At t = 0 this is
+    the plain gradient; as t advances the colors slide along the item, and every frame still
+    spans the whole violet -> cyan range from one end to the other."""
+    return 0.5 - 0.5 * math.cos(2 * math.pi * (g / 2 + t))
+
+
 def gradient_pulse(rel: str, skip=lambda x, y: False) -> None:
-    """Recolor an item's wood with the violet -> cyan gradient and make it pulse."""
+    """Recolor an item's wood with the violet -> cyan gradient and make the colors flow."""
     base = original(rel)
     bpx = base.load()
     wood = [(x, y) for y in range(16) for x in range(16) if is_wood(bpx[x, y]) and not skip(x, y)]
@@ -146,12 +153,11 @@ def gradient_pulse(rel: str, skip=lambda x, y: False) -> None:
 
     strip = Image.new("RGBA", (16, 16 * BOW_PULSE_FRAMES))
     for f in range(BOW_PULSE_FRAMES):
-        bright = 1 - (1 - PULSE_DARK) * (1 - math.cos(2 * math.pi * f / BOW_PULSE_FRAMES)) / 2
         frame = base.copy()
         fpx = frame.load()
         for x, y in wood:
-            g = (x - y - a0) / (a1 - a0)
-            ramp = [tuple((s + (e - s) * g) * bright for s, e in zip(sc, ec))
+            g = flow((x - y - a0) / (a1 - a0), f / BOW_PULSE_FRAMES)
+            ramp = [tuple(s + (e - s) * g for s, e in zip(sc, ec))
                     for sc, ec in zip(GRAD_RAMP_START, GRAD_RAMP_END)]
             shade = 0 if hi == lo else (lum(bpx[x, y]) - lo) / (hi - lo)
             fpx[x, y] = (*ramp_color(ramp, shade), bpx[x, y][3])
