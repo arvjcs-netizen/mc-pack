@@ -50,6 +50,12 @@ def is_diamond(p) -> bool:
     return p[3] > 0 and 0.40 <= h <= 0.60 and s > 0.08 and v > 0.25
 
 
+def is_gold(p) -> bool:
+    """Golden-apple gold, including its pale highlights; not the dark brown stem or green leaf."""
+    h, s, v = colorsys.rgb_to_hsv(p[0] / 255, p[1] / 255, p[2] / 255)
+    return p[3] > 0 and 0.03 <= h <= 0.18 and s > 0.15 and v > 0.5
+
+
 def gradient_color(g: float, shade: float, bright: float = 1.0):
     """g: 0 = violet end, 1 = cyan end. shade: 0 = darkest, 1 = lightest. bright: pulse level."""
     ramp = [tuple((s + (e - s) * g) * bright for s, e in zip(sc, ec))
@@ -79,12 +85,12 @@ def write_anim(rel: str, frames, frametime: int) -> None:
         json.dumps({"animation": {"frametime": frametime, "interpolate": True}}, indent=2) + "\n")
 
 
-def animate(rel: str, along) -> None:
+def animate(rel: str, along, match=is_diamond) -> None:
     """Recolor a 16x16 texture's diamond pixels with the pulsing gradient. along(x, y) -> 0..1,
     or None to run bottom-left -> top-right across the item's own diamond pixels."""
     base = Image.open(TEX / rel).convert("RGBA")
     px = base.load()
-    pixels = [(x, y) for y in range(base.height) for x in range(base.width) if is_diamond(px[x, y])]
+    pixels = [(x, y) for y in range(base.height) for x in range(base.width) if match(px[x, y])]
     shades = shade_map(base, pixels)
     if along is None:  # items: stretch the full violet -> cyan range over this item's own extent
         a0, a1 = min(x - y for x, y in pixels), max(x - y for x, y in pixels)
@@ -237,7 +243,8 @@ def fireball() -> None:
 
 RECOLORED = ([f"items/{n}.png" for n in DIAMOND_ITEMS] + [f"blocks/{n}.png" for n in DIAMOND_BLOCKS]
              + ["models/armor/diamond_layer_1.png", "models/armor/diamond_layer_2.png",
-                "entity/horse/armor/horse_armor_diamond.png", "items/fireball.png", "gui/icons.png"])
+                "entity/horse/armor/horse_armor_diamond.png", "items/fireball.png", "gui/icons.png",
+                "items/apple_golden.png"])
 
 
 def wipe(path: Path) -> None:
@@ -296,6 +303,7 @@ def main() -> None:
     entity_anim("entity/horse/armor/horse_armor_diamond.png", horse_armor)
     fireball()
     hearts()
+    animate("items/apple_golden.png", None, is_gold)  # also used by the enchanted apple
     assert sum(1 for _ in SRC.rglob("*")) == before, "MyPack's file count changed; check pack/!"
     print(f"Built {DST}. Enable 'MyPack Gradient' in-game (or press F3+T if it's already on).")
 
